@@ -14,6 +14,7 @@ import javax.annotation.Nonnull;
 import org.bukkit.entity.Player;
 
 import cn.blockmc.Zao_hon.MoreHealth;
+import cn.blockmc.Zao_hon.PlayerHealth;
 
 public class SqliteStorager extends DataStorager {
 	private MoreHealth plugin;
@@ -57,14 +58,14 @@ public class SqliteStorager extends DataStorager {
 	}
 
 	@Override
-	public void insertHealth(Player player, double health,double maxHealth) {
+	public void insertHealth(Player player, PlayerHealth phealth) {
 		Connection connection = setupConnection();
 		PreparedStatement ps = setupPreparedStatement(connection, PreparedStatementType.INSECT_HEALTH);
 		try {
 			ps.setString(1, player.getName());
 			ps.setString(2, player.getUniqueId().toString());
-			ps.setDouble(3, health);
-			ps.setDouble(4, maxHealth);
+			ps.setDouble(3,phealth.getHealth());
+			ps.setDouble(4,phealth.getMaxHealth());
 			ps.execute();
 			ps.close();
 			connection.close();
@@ -74,54 +75,72 @@ public class SqliteStorager extends DataStorager {
 
 	}
 
+//	@Override
+//	public HashMap<UUID, Double> selectAllHealth() {
+//		Connection connection = setupConnection();
+//		HashMap<UUID, Double> map = new HashMap<UUID, Double>();
+//		Statement stat;
+//		try {
+//			stat = connection.createStatement();
+//			ResultSet rs = stat.executeQuery("SELECT UUID AND HEALTH FROM playerhealth");
+//			while (rs.next()) {
+//				map.put(UUID.fromString(rs.getString(1)), rs.getDouble(2));
+//			}
+//			stat.close();
+//			connection.close();
+//		} catch (SQLException e) {
+//			e.printStackTrace();
+//		}
+//		return map;
+//
+//	}
+
+//	@Override
+//	public HashMap<UUID, Double> selectAllMaxHealth() {
+//		Connection connection = setupConnection();
+//		HashMap<UUID, Double> map = new HashMap<UUID, Double>();
+//		Statement stat;
+//		try {
+//			stat = connection.createStatement();
+//			ResultSet rs = stat.executeQuery("SELECT UUID AND MAXHEALTH FROM playerhealth");
+//			while (rs.next()) {
+//				map.put(UUID.fromString(rs.getString(1)), rs.getDouble(2));
+//			}
+//			stat.close();
+//			connection.close();
+//		} catch (SQLException e) {
+//			e.printStackTrace();
+//		}
+//		return map;
+//
+//	}
 	@Override
-	public HashMap<UUID, Double> selectHealth() {
+	public PlayerHealth getHealth(UUID uuid) {
+		PlayerHealth phealth = null;
 		Connection connection = setupConnection();
-		HashMap<UUID, Double> map = new HashMap<UUID, Double>();
-		Statement stat;
+		PreparedStatement ps = setupPreparedStatement(connection, PreparedStatementType.SELECT_HEALTH_AND_MAX_HEALTH);
 		try {
-			stat = connection.createStatement();
-			ResultSet rs = stat.executeQuery("SELECT UUID AND HEALTH FROM playerhealth");
-			while (rs.next()) {
-				map.put(UUID.fromString(rs.getString(1)), rs.getDouble(2));
+			ps.setString(1, uuid.toString());
+			ResultSet rs = ps.executeQuery();
+			if(rs.next()) {
+				phealth = new PlayerHealth(rs.getDouble(1),rs.getDouble(2));
 			}
-			stat.close();
+			ps.close();
 			connection.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
-		return map;
-
+		return phealth;
 	}
 
 	@Override
-	public HashMap<UUID, Double> selectMaxHealth() {
-		Connection connection = setupConnection();
-		HashMap<UUID, Double> map = new HashMap<UUID, Double>();
-		Statement stat;
-		try {
-			stat = connection.createStatement();
-			ResultSet rs = stat.executeQuery("SELECT UUID AND MAXHEALTH FROM playerhealth");
-			while (rs.next()) {
-				map.put(UUID.fromString(rs.getString(1)), rs.getDouble(2));
-			}
-			stat.close();
-			connection.close();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-		return map;
-
-	}
-
-	@Override
-	public void updateHealth(UUID uuid, double health, double maxHealth) {
+	public void updateHealth(UUID uuid,PlayerHealth phealth) {
 		Connection connection = setupConnection();
 		PreparedStatement ps = setupPreparedStatement(connection, PreparedStatementType.UPDATE_HEALTH);
 		try {
 			ps.setString(1, uuid.toString());
-			ps.setDouble(2, health);
-			ps.setDouble(3, maxHealth);
+			ps.setDouble(2, phealth.getHealth());
+			ps.setDouble(3, phealth.getMaxHealth());
 			ps.execute();
 			ps.close(); 
 			connection.close();
@@ -134,6 +153,9 @@ public class SqliteStorager extends DataStorager {
 	public PreparedStatement setupPreparedStatement(Connection conn, @Nonnull PreparedStatementType type) {
 		String str = "";
 		switch (type) {
+		case SELECT_HEALTH_AND_MAX_HEALTH:
+			str = "SELECT FROM playerhealth WHERE UUID = ?";
+			break;
 		case INSECT_HEALTH:
 			str = "INSECT INTO playerhealth VALUE(?,?,?,?)";
 			break;
